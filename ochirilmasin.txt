@@ -1,0 +1,84 @@
+const TelegramBot = require('node-telegram-bot-api');
+const mongoose = require('mongoose');
+const Item = require('./models/Item'); // Item modelini ulaymiz
+const axios = require('axios');
+
+const TELEGRAM_TOKEN = '7643909829:AAH1tIxwweTo-BFDA6sv5oZz93Hb3Lb7AcE';
+const bot = new TelegramBot(TELEGRAM_TOKEN, { polling: true });
+
+// MongoDBga ulanish
+mongoose.connect('mongodb://localhost:27017/steam-auth', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+}).then(() => {
+  console.log('MongoDB ulandi');
+}).catch(err => {
+  console.error('MongoDB ulanishda xatolik:', err);
+});
+
+function extractPartnerIdFromTradeUrl(tradeUrl) {
+  const url = new URL(tradeUrl);
+  const partnerId = url.searchParams.get("partner");
+  if (!partnerId) return null;
+  const steamId64 = (BigInt(partnerId) + 76561197960265728n).toString();
+  return steamId64;
+}
+
+function partnerToSteamID64(partnerId) {
+  return (partnerId + 76561197960265730).toString();
+}
+
+bot.onText(/\/start/, (msg) => {
+  const name = msg.from.first_name || 'Do‘st';
+  const message = `👋 Salom ${name}!\n\nMenga Steam trade URL'ingizni yuboring. Men sizga item narxlarini yuboraman (bazadan Steam va Skinsport narxlari).`;
+  bot.sendMessage(msg.chat.id, message);
+});
+
+bot.on('message', async (msg) => {
+  const chatId = msg.chat.id;
+  const text = msg.text;
+
+  if (text.startsWith('/start')) return;
+
+  const steamId64 = extractPartnerIdFromTradeUrl(text);
+
+  const inventoryUrl = `https://steamcommunity.com/inventory/${steamId64}/730/2`;
+
+  bot.sendMessage(chatId, '🔍 Inventarizatsiya tekshirilmoqda, kuting...');
+
+  try {
+    const { data } = await axios.get(inventoryUrl);
+
+    console.log(data);
+
+    if (!data || !data.assets || data.assets.length === 0) {
+      return bot.sendMessage(chatId, '❌ Inventory topilmadi yoki yopiq bo‘lishi mumkin.');
+    }
+
+    const assets = data.assets;
+    const descriptions = data.descriptions;
+    let replies = [];
+
+    for (let i = 0; i < Math.min(10, assets.length); i++) {
+      const asset = assets[i];
+      const desc = descriptions.find(
+        d => d.classid === asset.classid && d.instanceid === asset.instanceid
+      );
+
+      const name = desc.market_hash_name;
+
+      // 🔁 Narxlar bazadan olinadi
+      const item = await Item.findOne({ market_hash_name: name });
+
+      const steamPrice = item?.steam_price ? `$${item.steam_price}` : 'Noma’lum';
+      const skinsportPrice = item?.suggested_price ? `$${item.suggested_price}` : 'Noma’lum';
+
+      replies.push(`🎮 ${name}\n🟩 Steam: ${steamPrice}\n🟦 Skinsport: ${skinsportPrice}`);
+    }
+
+    bot.sendMessage(chatId, replies.join('\n\n'));
+  } catch (error) {
+    console.error(error);
+    bot.sendMessage(chatId, '❌ Xatolik yuz berdi. Inventoryni o‘qib bo‘lmadi.');
+  }
+});
