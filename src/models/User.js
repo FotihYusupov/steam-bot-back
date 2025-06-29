@@ -4,7 +4,8 @@ const userSchema = new mongoose.Schema({
   telegramId: { 
     type: Number,
     unique: true,
-    required: true
+    sparse: true,
+    required: true,
   },
   firstName: {
     type: String,
@@ -13,10 +14,12 @@ const userSchema = new mongoose.Schema({
   phoneNumber: {
     type: String,
     unique: true,
+    sparse: true
   },
   steamId64: {
     type: String,
     unique: true,
+    sparse: true,
     required: false
   },
   photo: {

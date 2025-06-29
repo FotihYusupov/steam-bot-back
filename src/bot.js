@@ -12,7 +12,6 @@ async function getPhoto(user_id) {
     const fileId = profilePhotos.photos[0][0].file_id;
     const file = await bot.getFile(fileId);
     const fileUrl = `https://api.telegram.org/file/bot${TELEGRAM_TOKEN}/${file.file_path}`;
-
     return fileUrl;
   }
 }
@@ -21,48 +20,66 @@ bot.onText(/\/start/, async (msg) => {
   const chatId = msg.chat.id;
   const name = msg.from.first_name || "Do‘st";
 
-  const findUser = await User.findOne({ telegramId: msg.from.id });
-
-  if (findUser && findUser.isActive) {
-    bot.sendMessage(chatId, `👋 Salom ${name} botga xush kelibsiz!`)
-
-    const token = sign({ id: findUser._id });
-
-    console.log(token)
-
-    await User.findOneAndUpdate({ telegramId: msg.from.id }, { photo: await getPhoto(msg.from.id), username: msg.from.username });
-
-    const url = `https://steam-bot-front.vercel.app?token=${token}`
-
-    bot.sendMessage(chatId, url);
-
-    await bot.setChatMenuButton({
-      chat_id: chatId,
-      menu_button: JSON.stringify({
-        type: "web_app",
-        text: "Menu",
-        web_app: {
-          url: url,
-        },
-      }),
-    });
-  } else {
-    await User.create({ telegramId: msg.from.id, chatId, });
-
-    const options = {
-      reply_markup: {
-        keyboard: [
-          [{ text: "📱 Telefon raqamni yuborish", request_contact: true }],
-        ],
-        one_time_keyboard: true,
-        resize_keyboard: true,
-      },
+  try {
+    const userUpdateData = {
+      chatId: chatId,
+      username: msg.from.username,
+      photo: await getPhoto(msg.from.id),
     };
-  
-    const welcomeMsg = `👋 Salom ${name}!\nIltimos botdan to'liq foydalanish uchun telefon raqamingizni yuboring!.`;
-    bot.sendMessage(chatId, welcomeMsg, options);
-  }
 
+    const user = await User.findOneAndUpdate(
+      { telegramId: msg.from.id },
+      { $set: userUpdateData },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    if (user.isActive) {
+      bot.sendMessage(chatId, `👋 Salom ${name} botga xush kelibsiz!`);
+
+      const token = sign({ id: user._id });
+      console.log("Generated Token:", token);
+
+      const url = `https://steam-bot-front.vercel.app?token=${token}`;
+      // bot.sendMessage(chatId, url);
+
+      await bot.setChatMenuButton({
+        chat_id: chatId,
+        menu_button: JSON.stringify({
+          type: "web_app",
+          text: "Menu",
+          web_app: {
+            url: url,
+          },
+        }),
+      });
+    } else {
+      const options = {
+        reply_markup: {
+          keyboard: [
+            [{ text: "📱 Telefon raqamni yuborish", request_contact: true }],
+          ],
+          one_time_keyboard: true,
+          resize_keyboard: true,
+        },
+      };
+
+      const welcomeMsg = `👋 Salom ${name}!\nIltimos botdan to'liq foydalanish uchun telefon raqamingizni yuboring!.`;
+      bot.sendMessage(chatId, welcomeMsg, options);
+    }
+  } catch (err) {
+    console.error("Error in /start handler:", err);
+    if (err.code === 11000 && err.keyPattern && err.keyPattern.telegramId) {
+      bot.sendMessage(
+        chatId,
+        "Kechirasiz, sizning Telegram hisobingiz bilan bog'liq muammo yuz berdi. Iltimos, admin bilan bog'laning."
+      );
+    } else {
+      bot.sendMessage(
+        chatId,
+        "Xatolik yuz berdi. Iltimos, qayta urinib ko'ring."
+      );
+    }
+  }
 });
 
 bot.on("contact", async (msg) => {
@@ -77,18 +94,36 @@ bot.on("contact", async (msg) => {
   }
 
   try {
+    const existingUserWithPhone = await User.findOne({
+      phoneNumber: contact.phone_number,
+      telegramId: { $ne: contact.user_id },
+    });
+
+    if (existingUserWithPhone) {
+      return bot.sendMessage(
+        chatId,
+        "❗️ Bu telefon raqam allaqachon boshqa foydalanuvchi tomonidan ro'yxatdan o'tkazilgan. Iltimos, boshqa raqam kiriting yoki admin bilan bog'laning."
+      );
+    }
+
     const filter = { telegramId: contact.user_id };
     const update = {
-      telegramId: contact.user_id,
       firstName: msg.from.first_name,
       phoneNumber: contact.phone_number,
       photo: await getPhoto(contact.user_id),
       username: msg.from.username,
-      isActive: true
+      isActive: true,
     };
-    const options = { upsert: true, new: true, setDefaultsOnInsert: true };
+    const options = { new: true };
 
     const user = await User.findOneAndUpdate(filter, update, options);
+
+    if (!user) {
+      return bot.sendMessage(
+        chatId,
+        "Foydalanuvchi topilmadi. Iltimos, /start buyrug'ini qayta bosing."
+      );
+    }
 
     const token = sign({ id: user._id });
 
@@ -102,9 +137,8 @@ bot.on("contact", async (msg) => {
       }
     );
 
-    const url = `https://steam-bot-front.vercel.app?token=${token}`
-
-    bot.sendMessage(chatId, url);
+    const url = `https://steam-bot-front.vercel.app?token=${token}`;
+    // bot.sendMessage(chatId, url);
 
     await bot.setChatMenuButton({
       chat_id: chatId,
@@ -118,9 +152,16 @@ bot.on("contact", async (msg) => {
     });
   } catch (err) {
     console.error("Telefon raqamni saqlashda xatolik:", err);
-    bot.sendMessage(
-      chatId,
-      "❌ Telefon raqamni saqlashda xatolik yuz berdi. Iltimos, qayta urinib ko‘ring."
-    );
+    if (err.code === 11000 && err.keyPattern && err.keyPattern.phoneNumber) {
+      bot.sendMessage(
+        chatId,
+        "❗️ Kiritilgan telefon raqam allaqachon ro'yxatdan o'tgan."
+      );
+    } else {
+      bot.sendMessage(
+        chatId,
+        "❌ Telefon raqamni saqlashda xatolik yuz berdi. Iltimos, qayta urinib ko‘ring."
+      );
+    }
   }
 });
