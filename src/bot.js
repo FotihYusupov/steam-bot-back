@@ -32,13 +32,17 @@ bot.onText(/\/start/, async (msg) => {
 
     await User.findOneAndUpdate({ telegramId: msg.from.id }, { photo: await getPhoto(msg.from.id), username: msg.from.username });
 
+    const url = `https://steam-bot-front.vercel.app?token=${token}`
+
+    bot.sendMessage(chatId, url);
+
     await bot.setChatMenuButton({
       chat_id: chatId,
       menu_button: JSON.stringify({
         type: "web_app",
         text: "Menu",
         web_app: {
-          url: "https://steam-bot-front.vercel.app?token=" + token,
+          url: url,
         },
       }),
     });
@@ -105,13 +109,17 @@ bot.on("contact", async (msg) => {
       }
     );
 
+    const url = `https://steam-bot-front.vercel.app?token=${token}`
+
+    bot.sendMessage(chatId, url);
+
     await bot.setChatMenuButton({
       chat_id: chatId,
       menu_button: JSON.stringify({
         type: "web_app",
         text: "Menu",
         web_app: {
-          url: "https://steam-bot-front.vercel.app?token=" + token,
+          url: url,
         },
       }),
     });
