@@ -109,9 +109,9 @@ bot.on("contact", async (msg) => {
       chat_id: chatId,
       menu_button: JSON.stringify({
         type: "web_app",
-        text: "Mening profilim",
+        text: "Menu",
         web_app: {
-          url: "https://yourdomain.com/telegram-webapp?token=" + token,
+          url: "https://steam-bot-front.vercel.app?token=" + token,
         },
       }),
     });
