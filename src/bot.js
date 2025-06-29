@@ -76,13 +76,6 @@ bot.on("contact", async (msg) => {
     );
   }
 
-  if (!contact.phone_number.startsWith("+998")) {
-    return bot.sendMessage(
-      chatId,
-      "❌ Xavfsizlik maqsadida faqatgina O'zbekiston raqamlarini qabul qilamiz."
-    );
-  }
-
   try {
     const filter = { telegramId: contact.user_id };
     const update = {
