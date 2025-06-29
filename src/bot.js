@@ -38,7 +38,7 @@ bot.onText(/\/start/, async (msg) => {
         type: "web_app",
         text: "Mening profilim",
         web_app: {
-          url: "https://yourdomain.com/telegram-webapp?token=" + token,
+          url: "https://steam-bot-front.vercel.app/?token=" + token,
         },
       }),
     });
