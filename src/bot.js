@@ -36,9 +36,9 @@ bot.onText(/\/start/, async (msg) => {
       chat_id: chatId,
       menu_button: JSON.stringify({
         type: "web_app",
-        text: "Mening profilim",
+        text: "Menu",
         web_app: {
-          url: "https://steam-bot-front.vercel.app/?token=" + token,
+          url: "https://steam-bot-front.vercel.app?token=" + token,
         },
       }),
     });
