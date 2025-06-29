@@ -8,7 +8,11 @@ const routes = require("./routes/routes");
 
 const app = express();
 
-mongoose.connect("mongodb+srv://Fotih:RCZCG6OK8TuShQmH@cluster0.leruja1.mongodb.net/steam-auth");
+mongoose.connect("mongodb://localhost:27017/steam-auth").then(() => {
+  console.log("MongoDB connected");
+}).catch(err => {
+  console.error("MongoDB connection error:", err);
+});
 
 app.use(cors());
 app.use(express.json());
