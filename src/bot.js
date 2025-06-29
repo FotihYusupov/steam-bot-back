@@ -30,7 +30,7 @@ bot.onText(/\/start/, async (msg) => {
 
     console.log(token)
 
-    await User.findOneAndUpdate({ telegramId: msg.from.id }, { photo: await getPhoto(msg.from.id) });
+    await User.findOneAndUpdate({ telegramId: msg.from.id }, { photo: await getPhoto(msg.from.id), username: msg.from.username });
 
     await bot.setChatMenuButton({
       chat_id: chatId,
@@ -86,6 +86,7 @@ bot.on("contact", async (msg) => {
       firstName: msg.from.first_name,
       phoneNumber: contact.phone_number,
       photo: await getPhoto(contact.user_id),
+      username: msg.from.username,
       isActive: true
     };
     const options = { upsert: true, new: true, setDefaultsOnInsert: true };

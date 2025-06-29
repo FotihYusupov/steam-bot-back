@@ -39,15 +39,15 @@ async function getSkinsportPrice() {
   }
 }
 
-// cron.schedule(
-//   "*/2 * * * *",
-//   () => {
-//     console.log("Starting get skinsport prices...");
-//     getSkinsportPrice();
-//     console.log("Finished get skinsport prices...");
-//   },
-//   {
-//     scheduled: true,
-//     timezone: "Asia/Tashkent",
-//   }
-// );
+cron.schedule(
+  "0 */4 * * *",
+  () => {
+    console.log("Starting get skinsport prices...");
+    getSkinsportPrice();
+    console.log("Finished get skinsport prices...");
+  },
+  {
+    scheduled: true,
+    timezone: "Asia/Tashkent",
+  }
+);

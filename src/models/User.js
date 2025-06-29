@@ -27,6 +27,10 @@ const userSchema = new mongoose.Schema({
     type: Number,
     required: false
   },
+  username: {
+    type: String,
+    required: false
+  },
   isActive: {
     type: Boolean,
     default: false

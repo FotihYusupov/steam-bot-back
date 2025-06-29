@@ -2,7 +2,6 @@ const axios = require('axios');
 const UserInventory = require('../models/UserInventory');
 const Item = require('../models/Item');
 
-// Browserga o‘xshash headerlar
 const headers = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
   'Accept': 'application/json, text/javascript, */*; q=0.01',
@@ -12,59 +11,94 @@ const headers = {
 };
 
 async function updateInventoryForUser(user) {
-  if (!user.steamId64) return;
+  if (!user.steamId64) {
+    console.log(`ℹ️ User ${user.telegramId} does not have a SteamID64.`);
+    return;
+  }
 
-  // ✅ Yangi formatdagi Steam inventory API URL
   const url = `https://steamcommunity.com/inventory/${user.steamId64}/730/2`;
-
-  console.log(`Yuklanmoqda: ${url}`);
+  console.log(`🔄 Fetching inventory for user ${user.telegramId} from: ${url}`);
 
   try {
     const { data } = await axios.get(url, { headers });
 
     if (!data || !data.assets || data.assets.length === 0) {
-      console.log(`❌ Inventory bo‘sh yoki mavjud emas: ${user.telegramId}`);
+      console.log(`❌ Inventory is empty or unavailable for user: ${user.telegramId}`);
+      await UserInventory.deleteMany({ user: user._id });
+      console.log(`🗑️ Cleared all inventory items for user: ${user.telegramId} as their Steam inventory is empty.`);
       return;
     }
 
     const assets = data.assets;
     const descriptions = data.descriptions;
-
-    // Eski inventory ma'lumotlarini tozalash
-    await UserInventory.deleteMany({ user: user._id });
+    const currentAssetIds = new Set();
 
     for (let asset of assets) {
       const desc = descriptions.find(
         d => d.classid === asset.classid && d.instanceid === asset.instanceid
       );
-      if (!desc) continue;
+      if (!desc) {
+        console.warn(`⚠️ Description not found for assetid: ${asset.assetid}`);
+        continue;
+      }
 
       const name = desc.market_hash_name;
+      const assetid = asset.assetid;
+      currentAssetIds.add(assetid);
 
-      // Mahsulot narxini bazadan olish
       const item = await Item.findOne({ market_hash_name: name });
       const steam_price = item?.steam_price || null;
       const suggested_price = item?.suggested_price || null;
 
-      const iconPath = desc.icon_url || desc.icon_url_large || null;
+      const iconPath = desc.icon_url_large || desc.icon_url || null;
       const image_url = iconPath
-        ? `https://community.cloudflare.steamstatic.com/economy/image/${iconPath}/330x192`
+        ? `https://community.cloudflare.steamstatic.com/economy/image/${iconPath}/360fx360f` // Larger image size
         : null;
 
-      // Inventory bazaga yoziladi
-      await UserInventory.create({
-        user: user._id,
-        market_hash_name: name,
-        steam_price,
-        suggested_price,
-        image_url,
-      });
+      const rarityTag = desc.tags?.find(tag => tag.category === 'Rarity');
+      const rarity = rarityTag?.localized_tag_name || null;
+
+      const exteriorTag = desc.tags?.find(tag => tag.category === 'Exterior');
+      const exterior = exteriorTag?.localized_tag_name || null;
+
+      const inspectAction = desc.actions?.find(action => action.name.includes('Inspect in Game')); // More specific check
+      const inspectLink = inspectAction?.link || null;
+
+      await UserInventory.updateOne(
+        {
+          user: user._id,
+          assetid,
+        },
+        {
+          $set: {
+            market_hash_name: name,
+            steam_price,
+            suggested_price,
+            image_url,
+            rarity,
+            exterior,
+            inspectLink,
+            updatedAt: new Date(),
+          },
+        },
+        { upsert: true }
+      );
     }
 
-    console.log(`✅ Inventory muvaffaqiyatli yangilandi: ${user.telegramId}`);
+    await UserInventory.deleteMany({
+      user: user._id,
+      assetid: { $nin: Array.from(currentAssetIds) },
+    });
+    console.log(`🗑️ Removed ${await UserInventory.countDocuments({ user: user._id, assetid: { $nin: Array.from(currentAssetIds) } })} stale items for user: ${user.telegramId}.`);
+
+    console.log(`✅ Inventory successfully updated for user: ${user.telegramId}`);
   } catch (err) {
-    console.error(`❌ Inventory olishda xatolik: ${user.telegramId}`);
-    console.error(err.response?.status, err.response?.data || err.message);
+    console.error(`❌ Error fetching or updating inventory for user: ${user.telegramId}`);
+    if (err.response) {
+      console.error(`Steam API responded with status ${err.response.status}: ${JSON.stringify(err.response.data)}`);
+    } else {
+      console.error(err.message);
+    }
   }
 }
 

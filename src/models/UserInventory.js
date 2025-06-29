@@ -10,6 +10,13 @@ const userInventorySchema = new mongoose.Schema({
   steam_price: Number,
   suggested_price: Number,
   image_url: String,
+  assetid: String,
+  float_value: Number,
+  exterior: String,
+  rarity: String,
+  expires_at: Date,
+  nextAnnounce: Number,
+  messageId: String,
   updatedAt: {
     type: Date,
     default: Date.now
