@@ -2,7 +2,7 @@ const TelegramBot = require("node-telegram-bot-api");
 const User = require("./models/User");
 const { sign } = require("./utils/jwt");
 
-const TELEGRAM_TOKEN = "7643909829:AAH1tIxwweTo-BFDA6sv5oZz93Hb3Lb7AcE";
+const TELEGRAM_TOKEN = "7643909829:AAGtmiIS3rx9HMR_i-4nx0vq6qBRi627lWs";
 const bot = new TelegramBot(TELEGRAM_TOKEN, { polling: true });
 
 async function getPhoto(user_id) {
