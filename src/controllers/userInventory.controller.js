@@ -2,7 +2,7 @@ const axios = require("axios");
 const UserInventory = require("../models/UserInventory");
 const findCurrency = require("../utils/getCurrency");
 
-const token = "7643909829:AAH1tIxwweTo-BFDA6sv5oZz93Hb3Lb7AcE";
+const token = "7643909829:AAGtmiIS3rx9HMR_i-4nx0vq6qBRi627lWs";
 
 function generateHashtagsFromSkinName(skinName) {
   if (!skinName || typeof skinName !== "string") return [];
@@ -61,35 +61,35 @@ function getInterest(value) {
 }
 
 exports.sendToTelegram = async (req, res) => {
-  try {
-    const findItem = await UserInventory.findById(req.params.id).populate(
-      "user"
-    );
+    try {
+        const findItem = await UserInventory.findById(req.params.id).populate(
+            "user"
+        );
 
-    if (!findItem) {
-      return res.status(404).json({
-        message: "Item not found",
-      });
-    }
+        if (!findItem) {
+            return res.status(404).json({
+                message: "Item not found",
+            });
+        }
 
-    function escapeMarkdown(text) {
-      return text?.replace(/[_*[\]()~`>#+=|{}.!\\-]/g, "\\$&");
-    }
+        function escapeMarkdown(text) {
+            return text?.replace(/[_*[\]()~`>#+=|{}.!\\-]/g, "\\$&");
+        }
 
-    const steamPriceInUSD = parseFloat(req.body.price);
-    const todaysCurrency = await findCurrency();
-    const uzsPriceRaw =
-      (steamPriceInUSD / 100) * getInterest(steamPriceInUSD) +
-      steamPriceInUSD * todaysCurrency.cb;
+        const steamPriceInUSD = parseFloat(req.body.price);
+        const todaysCurrency = await findCurrency();
+        const uzsPriceRaw =
+            (steamPriceInUSD / 100) * getInterest(steamPriceInUSD) +
+            steamPriceInUSD * todaysCurrency.cb;
 
-    const finalUzsPrice =
-      uzsPriceRaw < 3000 ? 3000 : roundToNearestMultiple(uzsPriceRaw, 100);
+        const finalUzsPrice =
+            uzsPriceRaw < 3000 ? 3000 : roundToNearestMultiple(uzsPriceRaw, 100);
 
-    const itemPrice = req.body.isFree
-      ? "Bepul"
-      : finalUzsPrice?.toLocaleString() + " so'm";
+        const itemPrice = req.body.isFree
+            ? "Bepul"
+            : finalUzsPrice?.toLocaleString() + " so'm";
 
-    const text = `
+        const text = `
 🎮 *${findItem.market_hash_name}*
 
 💰 Narxi: *${escapeMarkdown(itemPrice)}*
@@ -108,37 +108,44 @@ ${req.body.comment ? `📝 Izoh: ${req.body.comment}` : ""}
 
 📌 Eng zo‘r skinni hoziroq qo‘lga kiriting!
 ${generateHashtagsFromSkinName(findItem.market_hash_name).join(" ")}
-`;
+        `;
 
-    await axios
-      .post(`https://api.telegram.org/bot${token}/sendPhoto`, {
-        chat_id: -1002043361104,
-        photo: findItem.image_url,
-        caption: text,
-        parse_mode: "Markdown",
-      })
-      .catch((error) => {
-        console.error(
-          "Error sending message to admin chat:",
-          error.response?.data || error.message
-        );
+        try {
+            await axios.post(`https://api.telegram.org/bot${token}/sendPhoto`, {
+                chat_id: -1002660927986,
+                photo: findItem.image_url,
+                caption: text,
+                parse_mode: "Markdown",
+            });
+        } catch (error) {
+            console.error(
+                "Error sending message to Telegram:",
+                error.response?.data || error.message
+            );
+            if (error.response?.status === 401) {
+                return res.status(401).json({
+                    message: "Telegram bot token is unauthorized. Please check your token.",
+                    error: error.message,
+                });
+            }
+            return res.status(500).json({
+                message: "Failed to send message to Telegram.",
+                error: error.message,
+            });
+        }
+
+        findItem.nextAnnounce = Date.now() + 3 * 60 * 60 * 1000;
+        await findItem.save();
+
         return res.json({
-          message: "Interval server error",
-          error: error.message,
+            data: findItem,
         });
-      });
 
-    findItem.nextAnnounce = Date.now() + 3 * 60 * 60 * 1000;
-    await findItem.save();
-
-    return res.json({
-      data: findItem,
-    });
-  } catch (err) {
-    console.log(err);
-    return res.json({
-      message: "Interval server error",
-      error: err.message,
-    });
-  }
+    } catch (err) {
+        console.error("General server error:", err);
+        return res.status(500).json({
+            message: "Internal server error",
+            error: err.message,
+        });
+    }
 };
