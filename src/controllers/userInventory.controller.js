@@ -93,7 +93,7 @@ exports.sendToTelegram = async (req, res) => {
 🎮 *${findItem.market_hash_name}*
 
 💰 Narxi: *${escapeMarkdown(itemPrice)}*
-🧑‍💼 Sotuvchi: *@${escapeMarkdown(findItem?.user?.username || "Noma’lum")}*
+🧑‍💼 Sotuvchi: *@${findItem?.user?.username || "Noma’lum"}*
 
 ${findItem.exterior ? `🎭 Float: *${escapeMarkdown(findItem.exterior)}*` : ""}
 ${findItem.rarity ? `💎 Toifa: *${escapeMarkdown(findItem.rarity)}*` : ""}
