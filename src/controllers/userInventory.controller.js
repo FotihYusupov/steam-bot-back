@@ -101,7 +101,7 @@ ${findItem.rarity ? `💎 Toifa: *${escapeMarkdown(findItem.rarity)}*` : ""}
 ${req.body.comment ? `📝 Izoh: ${req.body.comment}` : ""}
 
 📣 Kanalga obuna bo'ling:
-@yusupovfotih
+@skinChanger_official
 
 📤 E'lon joylashtirish:
 @steamInvertoryHelper\\_bot 
