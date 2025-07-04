@@ -1,6 +1,9 @@
+const axios = require("axios");
 const User = require("../models/User");
 const UserInventory = require("../models/UserInventory");
 const updateInventoryForUser = require("../utils/updateInventory");
+
+const token = "7643909829:AAGtmiIS3rx9HMR_i-4nx0vq6qBRi627lWs";
 
 exports.getAll = async (req, res) => {
   try {
@@ -100,6 +103,59 @@ exports.updateInventory = async (req, res) => {
 
     return res.json({
       data: items,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      message: "Interval server error",
+      error: err.message
+    })
+  }
+}
+
+exports.blockUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    user.isBlocked = !user.isBlocked;
+    await user.save();
+    return res.json({
+      data: user
+    })
+  } catch (err) {
+    return res.status(500).json({
+      message: "Interval server error",
+      error: err.message
+    })
+  }
+}
+
+exports.delete = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const findUser = await User.findById(userId);
+
+    if (!findUser) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
+    axios.post(`https://api.telegram.org/bot${token}/sendMessage`, { 
+      chat_id: findUser.chatId,
+      text: `Sizning akkauntingiz muvaffaqiyatli o‘chirildi.\n\nQayta akkaunt ochish uchun /start buyrug'ini yuboring.`
+    });
+
+    axios.post(`https://api.telegram.org/bot${token}/setChatMenuButton`, {
+      chat_id: findUser.chatId,
+      menu_button: {
+        type: "default"
+      }
+    })
+
+    await UserInventory.deleteMany({ user: userId });
+
+    await User.findByIdAndDelete(userId);
+    return res.json({
+      message: "User deleted successfully"
     });
   } catch (err) {
     return res.status(500).json({

@@ -5,6 +5,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 require("./bot");
 const routes = require("./routes/routes");
+require("./inventoryScheduler")
 
 const app = express();
 

@@ -9,6 +9,7 @@ const userInventorySchema = new mongoose.Schema({
   market_hash_name: String,
   steam_price: Number,
   suggested_price: Number,
+  user_price: Number,
   image_url: String,
   assetid: String,
   float_value: Number,
@@ -16,7 +17,8 @@ const userInventorySchema = new mongoose.Schema({
   rarity: String,
   expires_at: Date,
   nextAnnounce: Number,
-  messageId: String,
+  comment: String,
+  messageId: Number,
   updatedAt: {
     type: Date,
     default: Date.now

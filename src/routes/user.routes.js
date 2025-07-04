@@ -11,5 +11,8 @@ userRoutes.get("/inventory", authMiddleware, userController.getInventory);
 userRoutes.put("/update-inventory", authMiddleware, userController.updateInventory);
 userRoutes.put("/set-trade-url", authMiddleware, userController.setTradeUrl);
 userRoutes.put("/", authMiddleware, userController.update);
+userRoutes.put("/block/:id", authMiddleware, userController.blockUser);
+
+userRoutes.delete("/", authMiddleware, userController.delete);
 
 module.exports = userRoutes;
